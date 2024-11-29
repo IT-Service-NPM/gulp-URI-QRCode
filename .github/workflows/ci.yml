@@ -1,0 +1,502 @@
+name: Continuous integration
+
+on:
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'tsconfig.json'
+      - 'tsup.config.ts'
+      - 'test/**'
+      - 'vitest.config.ts'
+      - 'eslint.config.mjs'
+      - 'api-extractor.json'
+      - 'readme.md'
+      - '.github/workflows/ci.yml'
+  push:
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'tsconfig.json'
+      - 'tsup.config.ts'
+      - 'test/**'
+      - 'vitest.config.ts'
+      - 'eslint.config.mjs'
+      - 'api-extractor.json'
+      - 'readme.md'
+      - '.github/workflows/ci.yml'
+
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+  pull-requests: write
+  checks: write
+
+jobs:
+  build:
+    name: 'Build NPM package'
+    runs-on: ubuntu-latest
+    outputs:
+      package-json: ${{ steps.read-package-json.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: latest
+
+      - name: Cache dependencies
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: OS:ubuntu-latest:Node:latest:package.json:${{hashFiles('package.json')}}
+
+      - name: Install dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: npm install
+
+      - name: Cache package dist
+        id: cache-dist
+        uses: actions/cache@v4
+        with:
+          path: dist
+          key: package-dist-${{github.run_id}}
+
+      - name: Build
+        run: npm run build
+
+      - uses: actions/github-script@v7
+        id: read-package-json
+        with:
+          result-encoding: string
+          script: |
+            try {
+              const fs = require('fs');
+              return fs.readFileSync('package.json');
+            } catch(err) {
+              core.error("Error while reading package.json");
+              core.setFailed(err);
+            }
+
+      - name: Pack
+        run: npm pack
+
+      - name: Upload package tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: Package tarball
+          path: ${{fromJson(steps.read-package-json.outputs.result).name}}-${{fromJson(steps.read-package-json.outputs.result).version}}.tgz
+
+  tests:
+    name: 'Testing'
+    needs: build
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
+        node-version: ['20.x', '21.x', '22.x', 'latest']
+        include:
+          - os: 'ubuntu-latest'
+            node-version: 'latest'
+            main-test-environment: true
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup NodeJS ${{ matrix.node-version }}
+        id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Cache dependencies
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: OS:${{ matrix.os }}:Node:${{ matrix.node-version }}:package.json:${{hashFiles('package.json')}}
+
+      - name: Install dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: npm install
+
+      - name: Cache package dist
+        id: cache-dist
+        uses: actions/cache@v4
+        with:
+          path: dist
+          key: package-dist-${{github.run_id}}
+
+      - name: Build
+        if: steps.cache-dist.outputs.cache-hit != 'true'
+        run: npm run build
+
+      - name: Linting
+        if: matrix.main-test-environment
+        run: npm run lint
+
+      # - name: Check module exports
+      #   if: matrix.main-test-environment
+      #   run: npm run check-exports
+
+      - name: Tests
+        run: npm run test
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Test Results (OS ${{ matrix.os }} - Node.js ${{ matrix.node-version }})
+          path: test/results/junit-report.xml
+
+      - name: Upload Test Coverage
+        if: matrix.main-test-environment
+        uses: actions/upload-artifact@v4
+        with:
+          name: Coverage
+          path: coverage/coverage-summary.json
+
+      - name: Report Coverage
+        if: matrix.main-test-environment
+        uses:  davelosert/vitest-coverage-report-action@v2
+        with:
+          file-coverage-mode: all
+
+  publish-test-results:
+    name: Results publishing
+    needs:
+      - build
+      - tests
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: write
+      contents: read
+      issues: read
+    if: always()
+
+    steps:
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: test/results
+
+      - name: Publish tests results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        id: test-results
+        with:
+          files: 'test/results/**/*.xml'
+
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Coverage
+          path: coverage
+
+      - name: Set badge color2
+        uses: actions/github-script@v7
+        id: get-badge-color
+        with:
+          result-encoding: string
+          script: |
+            try {
+              switch('${{ fromJSON( steps.test-results.outputs.json ).conclusion }}') {
+                case 'success': return '31c653';
+                case 'failure': return '800000';
+                case 'neutral':
+                default: return '696969';
+              };
+            } catch(err) {
+              core.error('Error on badge color calculation');
+              core.setFailed(err);
+            }
+
+      - name: Create tests results badge
+        uses: emibcn/badge-action@v2.0.3
+        with:
+          label: Tests
+          status: '${{ fromJSON( steps.test-results.outputs.json ).formatted.stats.tests }} tests, ${{ fromJSON( steps.test-results.outputs.json ).formatted.stats.runs }} runs: ${{ fromJSON( steps.test-results.outputs.json ).conclusion }}'
+          color: ${{ steps.get-badge-color.outputs.result }}
+          icon: data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxZW0iIGhlaWdodD0iMWVtIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGcgZmlsbD0ibm9uZSI+PHJlY3Qgd2lkdGg9IjI1NiIgaGVpZ2h0PSIyNTYiIGZpbGw9IiMyNDI5MzgiIHJ4PSI2MCIvPjxwYXRoIGZpbGw9IiNmY2M3MmIiIGQ9Im0xNzguMDkgOTIuMzE5bC00Ny44MTMgNjkuMTMxYTQuMTE4IDQuMTE4IDAgMCAxLTYuNzc4LS4wMWE0LjA4IDQuMDggMCAwIDEtLjcwNi0yLjUwMmwxLjkxNC0zOC4xNjhsLTMwLjg5Mi02LjU1MWE0LjEgNC4xIDAgMCAxLTIuOTU2LTIuNDg0YTQuMDcgNC4wNyAwIDAgMSAuNDM1LTMuODNsNDcuODE0LTY5LjEzMWE0LjEyIDQuMTIgMCAwIDEgNC42OTktMS41NmE0LjEgNC4xIDAgMCAxIDIuMDc5IDEuNTcxYTQuMDcgNC4wNyAwIDAgMSAuNzA1IDIuNTAybC0xLjkxNCAzOC4xNjhsMzAuODkyIDYuNTVhNC4xIDQuMSAwIDAgMSAxLjc5Mi44NzRhNC4wNyA0LjA3IDAgMCAxIC43MjkgNS40NCIvPjxwYXRoIGZpbGw9IiM3MjliMWIiIGQ9Ik0xMjguMDE5IDIxOS40NTFhOS43IDkuNyAwIDAgMS0zLjcwNi0uNzM0YTkuNyA5LjcgMCAwIDEtMy4xNC0yLjEwMWwtNDUuMTc4LTQ1LjE3NWE5LjY4IDkuNjggMCAwIDEgNi44NS0xNi41MDhhOS42OCA5LjY4IDAgMCAxIDYuODQgMi44MTdsMzguMzM0IDM4LjMyOWw4My41MS04My41MDZhOS42ODMgOS42ODMgMCAwIDEgMTMuNjM0LjA1NWE5LjcgOS43IDAgMCAxIDIuODM3IDYuODA3YTkuNyA5LjcgMCAwIDEtMi43ODEgNi44MjhsLTkwLjM1NiA5MC4zNTNhOS42MyA5LjYzIDAgMCAxLTYuODQ0IDIuODM1Ii8+PHBhdGggZmlsbD0iIzcyOWIxYiIgZmlsbC1vcGFjaXR5PSIwLjUiIGQ9Ik0xMjcuOTggMjE5LjQ1MWE5LjcgOS43IDAgMCAwIDMuNzA2LS43MzRhOS43IDkuNyAwIDAgMCAzLjE0LTIuMTAxbDQ1LjE3OC00NS4xNzVhOS42OCA5LjY4IDAgMCAwLTEzLjY5MS0xMy42OTFsLTM4LjMzMyAzOC4zMjlsLTgzLjUxLTgzLjUwNmE5LjY4MyA5LjY4MyAwIDAgMC0xMy42MzQuMDU1YTkuNjgzIDkuNjgzIDAgMCAwLS4wNTYgMTMuNjM1bDkwLjM1NiA5MC4zNTNhOS42NSA5LjY1IDAgMCAwIDYuODQ0IDIuODM1Ii8+PC9nPjwvc3ZnPg==
+          path: ${{ fromJSON( needs.build.outputs.package-json).name }}-tests.svg
+
+      - name: Create tests coverage badge
+        uses: wjervis7/vitest-badge-action@v1.0.0
+        with:
+          badge-text: Coverage
+          result-type: lines
+          badge-path: ${{ fromJSON( needs.build.outputs.package-json).name }}-coverage.svg
+          upload-badge: false
+
+
+      - name: Upload Test Results Badge
+        uses: actions/upload-artifact@v4
+        with:
+          name: tests.svg
+          path: ${{ fromJSON( needs.build.outputs.package-json).name }}-tests.svg
+
+      - name: Upload Test Coverage Badge
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage.svg
+          path: ${{ fromJSON( needs.build.outputs.package-json).name }}-coverage.svg
+
+      - name: Upload Test Results Badge to Gist
+        if: >
+          github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main' ||
+          github.event_name != 'workflow_run' && github.ref == 'refs/heads/main'
+        uses: andymckay/append-gist-action@6e8d64427fe47cbacf4ab6b890411f1d67c07f3e
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gistURL: https://gist.githubusercontent.com/sergey-s-betke/d70e4de09a490afc9fb7a737363b231a
+          file: ${{ fromJSON( needs.build.outputs.package-json).name }}-tests.svg
+
+      - name: Upload Test Coverage Badge to Gist
+        if: >
+          github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main' ||
+          github.event_name != 'workflow_run' && github.ref == 'refs/heads/main'
+        uses: andymckay/append-gist-action@6e8d64427fe47cbacf4ab6b890411f1d67c07f3e
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gistURL: https://gist.githubusercontent.com/sergey-s-betke/d70e4de09a490afc9fb7a737363b231a
+          file: ${{ fromJSON( needs.build.outputs.package-json).name }}-coverage.svg
+
+  deploy-to-GitHub-Releases:
+    outputs:
+      new-release-published: ${{steps.release-to-GitHub.outputs.new-release-published}}
+      version: ${{steps.release-to-GitHub.outputs.release-version}}
+    environment: GitHub-Releases
+    needs:
+      - build
+      - tests
+    if: >
+      github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main' ||
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      deployments: write
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Setup NodeJS latest
+        id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: latest
+
+      - name: Cache dependencies
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: OS:ubuntu-latest:Node:latest:package.json:${{hashFiles('package.json')}}
+
+      - name: Install dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: npm install
+
+      - name: Cache package dist
+        id: cache-dist
+        uses: actions/cache@v4
+        with:
+          path: dist
+          key: package-dist-${{github.run_id}}
+
+      - name: Build
+        if: steps.cache-dist.outputs.cache-hit != 'true'
+        run: npm run build
+
+      - name: Update API documentation
+        run: npm run update-readme-API
+
+      - name: Cache readme.md
+        id: cache-readme
+        uses: actions/cache@v4
+        with:
+          path: readme.md
+          key: package-readme-${{github.run_id}}
+
+      - name: Cache package.json
+        id: cache-package-json
+        uses: actions/cache@v4
+        with:
+          path: package.json
+          key: package.json-${{github.run_id}}
+
+      - name: Update readme.md
+        run: npm run update-readme
+
+      # - name: Commit documentation
+      #   uses: stefanzweifel/git-auto-commit-action@v5
+      #   with:
+      #     commit_message: "docs: update API description and examples [skip ci]"
+      #     file_pattern: 'docs/*.md readme.md test/examples/**/readme.md'
+
+      - uses: codfish/semantic-release-action@v3
+        id: release-to-GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          branches: main
+          # preset: "angular"
+          # https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/conventional-changelog-angular
+          # https://github.com/angular/angular/blob/main/CONTRIBUTING.md#commit-message-footer
+          additional-packages: |
+            [ '@semantic-release/git', '@semantic-release/changelog' ]
+          plugins: |
+            [
+              ["@semantic-release/commit-analyzer", {
+                "preset": "angular"
+              }],
+              [
+                "@semantic-release/release-notes-generator",
+                {
+                  "preset": "conventionalcommits",
+                  "presetConfig": {
+                    "types": [
+                      { type: 'feat', section: 'Features', hidden: false },
+                      { type: 'fix', section: 'Bug Fixes', hidden: false },
+                      { type: 'perf', section: 'Performance Improvements', hidden: false },
+                      { type: 'revert', section: 'Reverts', hidden: false },
+                      { type: 'docs', section: 'Other Updates', hidden: true },
+                      { type: 'style', section: 'Other Updates', hidden: true },
+                      { type: 'chore', section: 'Other Updates', hidden: true },
+                      { type: 'refactor', section: 'Other Updates', hidden: false },
+                      { type: 'test', section: 'Other Updates', hidden: false },
+                      { type: 'build', section: 'Other Updates', hidden: false },
+                      { type: 'ci', section: 'Other Updates', hidden: false }
+                    ]
+                  }
+                }
+              ],
+              "@semantic-release/changelog",
+              [
+                "@semantic-release/npm",
+                {
+                  "npmPublish": false
+                }
+              ],
+              "@semantic-release/github",
+              ["@semantic-release/git", {
+                "assets": [
+                  "package.json",
+                  "CHANGELOG.md",
+                  "docs/*.md",
+                  "readme.md",
+                  "test/examples/**/readme.md"
+                ],
+                "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+              }]
+            ]
+
+  deploy-to-npmJS:
+    environment: npm
+    needs:
+      - build
+      - tests
+      - deploy-to-GitHub-Releases
+    if: needs.deploy-to-GitHub-Releases.outputs.new-release-published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      deployments: write
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Setup NodeJS latest
+        id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: latest
+
+      - name: Cache dependencies
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: OS:ubuntu-latest:Node:latest:package.json:${{hashFiles('package.json')}}
+
+      - name: Install dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: npm install
+
+      - name: Cache package dist
+        id: cache-dist
+        uses: actions/cache@v4
+        with:
+          path: dist
+          key: package-dist-${{github.run_id}}
+
+      - name: Build
+        if: steps.cache-dist.outputs.cache-hit != 'true'
+        run: npm run build
+
+      - name: Cache readme.md
+        id: cache-readme
+        uses: actions/cache@v4
+        with:
+          path: readme.md
+          key: package-readme-${{github.run_id}}
+
+      - name: Update readme.md
+        if: steps.cache-readme.outputs.cache-hit != 'true'
+        run: npm run update-readme
+
+      - name: Cache package.json
+        id: cache-package-json
+        uses: actions/cache@v4
+        with:
+          path: package.json
+          key: package.json-${{github.run_id}}
+
+      - uses: codfish/semantic-release-action@v3
+        if: steps.cache-package-json.outputs.cache-hit != 'true'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        with:
+          branches: main
+          # preset: "angular"
+          # https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/conventional-changelog-angular
+          # https://github.com/angular/angular/blob/main/CONTRIBUTING.md#commit-message-footer
+          plugins: |
+            [
+              ["@semantic-release/commit-analyzer", {
+                "preset": "angular"
+              }]
+            ]
+
+      - uses: JS-DevTools/npm-publish@v3
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
