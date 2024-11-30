@@ -1,1 +1,1 @@
-export * from './gulp-uri-qrcode.ts';
+export * from './url2qr.ts';
