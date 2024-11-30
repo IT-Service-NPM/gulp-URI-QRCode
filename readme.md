@@ -16,17 +16,15 @@
 [![EditorConfig](https://img.shields.io/badge/EditorConfig-333333.svg?logo=editorconfig)](https://editorconfig.org)
 [![ESLint](https://img.shields.io/badge/ESLint-3A33D1?logo=eslint)](https://eslint.org)
 
-This Gulp plugin build QRCode from URI in source files.
+This Gulp plugin build QRCode from URL in source .url files.
 
 ## Contents
 
-- [gulp-uri-qrcode](#gulp-uri-qrcode)
-  - [Contents](#contents)
-  - [Install](#install)
-  - [Examples](#examples)
-    - [Example 1](#example-1)
-  - [API](#api)
-  - [License](#license)
+* [Install](#install)
+* [Examples](#examples)
+  * [Create PNG QRCode from .url files with default settings](#create-png-qrcode-from-url-files-with-defaultsettings)
+* [API](#api)
+* [License](#license)
 
 ## Install
 
@@ -36,11 +34,22 @@ npm install --save-dev gulp-uri-qrcode
 
 ## Examples
 
-### Example 1
+### Create PNG QRCode from .url files with default settings
 
-Example 1.
+`url2qr` can create PNG QRCodes from .url files:
 
-```typescript file=test/examples/01.ts
+```typescript file=test/examples/01/gulpfile.ts
+import { url2qr } from '#gulp-uri-qrcode';
+import GulpClient from 'gulp';
+
+function task1() {
+  return GulpClient.src('fixtures/*.url')
+    .pipe(url2qr())
+    .pipe(GulpClient.dest('output'));
+};
+task1.description = 'Test gulp task for creating PNG QR codes';
+GulpClient.task(task1);
+
 ```
 
 ## API
