@@ -13,5 +13,4 @@ function task1() {
 };
 task1.description = 'Test gulp task for creating PNG QR codes';
 GulpClient.task(task1);
-
 ```
