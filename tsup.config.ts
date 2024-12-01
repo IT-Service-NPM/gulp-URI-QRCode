@@ -5,6 +5,8 @@ export default defineConfig({
     'src/index.ts'
   ],
   format: ['cjs', 'esm'],
+  bundle: true,
+  treeshake: true,
   splitting: false,
   dts: true,
   outDir: 'dist',
