@@ -32,14 +32,12 @@ URL=https://github.com/IT-Service-NPM/gulp-URI-QRCode
 
 ## Contents
 
-- [gulp-uri-qrcode](#gulp-uri-qrcode)
-  - [Contents](#contents)
-  - [Install](#install)
-  - [Examples](#examples)
-    - [Create PNG QRCode from .url files with default settings](#create-png-qrcode-from-url-files-with-defaultsettings)
-    - [Create QRCode in streaming mode with scale](#create-qrcode-in-streaming-mode-withscale)
-  - [API](#api)
-  - [License](#license)
+* [Install](#install)
+* [Examples](#examples)
+  * [Create PNG QRCode from .url files with default settings](#create-png-qrcode-from-url-files-with-defaultsettings)
+  * [Create QRCode in streaming mode with scale](#create-qrcode-in-streaming-mode-withscale)
+* [API](#api)
+* [License](#license)
 
 ## Install
 
