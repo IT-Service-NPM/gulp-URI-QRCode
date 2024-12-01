@@ -32,7 +32,7 @@ URL=https://github.com/IT-Service-NPM/gulp-URI-QRCode
 * [Install](#install)
 * [Examples](#examples)
   * [Create PNG QRCode from .url files with default settings](#create-png-qrcode-from-url-files-with-defaultsettings)
-  * [Create QRCode in streaming mode with scale](#create-qrcode-in-streaming-mode-with-scale)
+  * [Create QRCode in streaming mode with scale](#create-qrcode-in-streaming-mode-withscale)
 * [API](#api)
 * [License](#license)
 
@@ -59,7 +59,6 @@ function task1() {
 };
 task1.description = 'Test gulp task for creating PNG QR codes';
 GulpClient.task(task1);
-
 ```
 
 ### Create QRCode in streaming mode with scale
@@ -78,7 +77,6 @@ function task1() {
 };
 task1.description = 'Test gulp task for creating PNG QR codes';
 GulpClient.task(task1);
-
 ```
 
 ## API

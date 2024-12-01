@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/IT-Service-NPM/gulp-uri-qrcode/compare/v1.0.0...v1.0.1) (2024-12-01)
+
+
+### Bug Fixes
+
+* **plugin:** fix url2qr streaming mode ([44059d1](https://github.com/IT-Service-NPM/gulp-uri-qrcode/commit/44059d189fdbfb403a610e27a0b6b91496bf56f4))
+
 ## 1.0.0 (2024-11-30)
 
 
