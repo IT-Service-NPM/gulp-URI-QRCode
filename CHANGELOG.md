@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/IT-Service-NPM/gulp-uri-qrcode/compare/v1.0.1...v1.0.2) (2024-12-01)
+
+
+### Bug Fixes
+
+* **plugin:** remove unnecessary error handling in QRCode callback ([628f089](https://github.com/IT-Service-NPM/gulp-uri-qrcode/commit/628f08931a04975e8db101a5f52c6bc335169bc6))
+
 ## [1.0.1](https://github.com/IT-Service-NPM/gulp-uri-qrcode/compare/v1.0.0...v1.0.1) (2024-12-01)
 
 

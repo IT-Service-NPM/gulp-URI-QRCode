@@ -1,7 +1,7 @@
 {
   "name": "gulp-uri-qrcode",
   "type": "module",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A gulp helper for tools that need files on disk.",
   "keywords": [
     "gulpplugin",
