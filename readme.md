@@ -16,6 +16,9 @@
 [![EditorConfig](https://img.shields.io/badge/EditorConfig-333333.svg?logo=editorconfig)](https://editorconfig.org)
 [![ESLint](https://img.shields.io/badge/ESLint-3A33D1?logo=eslint)](https://eslint.org)
 
+**Deprecated !!!**
+Please, use [`gulp-file2qr` fork](https://www.npmjs.com/package/gulp-file2qr)
+
 This Gulp plugin build QRCode from URL in source .url files.
 
 .url files — INI files. For example:
@@ -29,12 +32,14 @@ URL=https://github.com/IT-Service-NPM/gulp-URI-QRCode
 
 ## Contents
 
-* [Install](#install)
-* [Examples](#examples)
-  * [Create PNG QRCode from .url files with default settings](#create-png-qrcode-from-url-files-with-defaultsettings)
-  * [Create QRCode in streaming mode with scale](#create-qrcode-in-streaming-mode-withscale)
-* [API](#api)
-* [License](#license)
+- [gulp-uri-qrcode](#gulp-uri-qrcode)
+  - [Contents](#contents)
+  - [Install](#install)
+  - [Examples](#examples)
+    - [Create PNG QRCode from .url files with default settings](#create-png-qrcode-from-url-files-with-defaultsettings)
+    - [Create QRCode in streaming mode with scale](#create-qrcode-in-streaming-mode-withscale)
+  - [API](#api)
+  - [License](#license)
 
 ## Install
 
