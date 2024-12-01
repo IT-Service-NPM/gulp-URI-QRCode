@@ -138,14 +138,8 @@ export class QRCodesFromURICreatorStream extends Transform {
               PNGStream,
               urlForQRCode.toString(),
               this.options.qrOptions,
-              (error: Error | null | undefined): void => {
-                if (error) {
-                  this.emit('error',
-                    error instanceof PluginError ?
-                      error as PluginError :
-                      new PluginError(PLUGIN_NAME, error)
-                  );
-                };
+              (err?: Error | null): void => {
+                return;
               }
             );
             callback(null, file);

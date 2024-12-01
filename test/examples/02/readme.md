@@ -15,3 +15,7 @@ function task1() {
 task1.description = 'Test gulp task for creating PNG QR codes';
 GulpClient.task(task1);
 ```
+
+QRCode:
+
+[![QRCode](./output/test-file.png)](./output/test-file.png)

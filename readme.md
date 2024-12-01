@@ -29,12 +29,14 @@ URL=https://github.com/IT-Service-NPM/gulp-URI-QRCode
 
 ## Contents
 
-* [Install](#install)
-* [Examples](#examples)
-  * [Create PNG QRCode from .url files with default settings](#create-png-qrcode-from-url-files-with-defaultsettings)
-  * [Create QRCode in streaming mode with scale](#create-qrcode-in-streaming-mode-withscale)
-* [API](#api)
-* [License](#license)
+- [gulp-uri-qrcode](#gulp-uri-qrcode)
+  - [Contents](#contents)
+  - [Install](#install)
+  - [Examples](#examples)
+    - [Create PNG QRCode from .url files with default settings](#create-png-qrcode-from-url-files-with-defaultsettings)
+    - [Create QRCode in streaming mode with scale](#create-qrcode-in-streaming-mode-withscale)
+  - [API](#api)
+  - [License](#license)
 
 ## Install
 
@@ -61,6 +63,10 @@ task1.description = 'Test gulp task for creating PNG QR codes';
 GulpClient.task(task1);
 ```
 
+QRCode:
+
+[![QRCode](./test/examples/01/output/test-file.png)](./test/examples/01/output/test-file.png)
+
 ### Create QRCode in streaming mode with scale
 
 Read .url files in streaming mode
@@ -78,6 +84,10 @@ function task1() {
 task1.description = 'Test gulp task for creating PNG QR codes';
 GulpClient.task(task1);
 ```
+
+QRCode:
+
+[![QRCode](./test/examples/02/output/test-file.png)](./test/examples/02/output/test-file.png)
 
 ## API
 
