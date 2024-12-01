@@ -139,9 +139,16 @@ export class QRCodesFromURICreatorStream extends Transform {
               urlForQRCode.toString(),
               this.options.qrOptions,
               (error: Error | null | undefined): void => {
-                callback(error, file);
+                if (error) {
+                  this.emit('error',
+                    error instanceof PluginError ?
+                      error as PluginError :
+                      new PluginError(PLUGIN_NAME, error)
+                  );
+                };
               }
             );
+            callback(null, file);
           });
       } else if (file.isBuffer()) {
         const urlForQRCode = this.getURIFromBuffer(file.contents, file);

@@ -18,11 +18,21 @@
 
 This Gulp plugin build QRCode from URL in source .url files.
 
+.url files — INI files. For example:
+
+```ini
+[{000214A0-0000-0000-C000-000000000046}]
+Prop3=19,2
+[InternetShortcut]
+URL=https://github.com/IT-Service-NPM/gulp-URI-QRCode
+```
+
 ## Contents
 
 * [Install](#install)
 * [Examples](#examples)
   * [Create PNG QRCode from .url files with default settings](#create-png-qrcode-from-url-files-with-defaultsettings)
+  * [Create QRCode in streaming mode with scale](#create-qrcode-in-streaming-mode-with-scale)
 * [API](#api)
 * [License](#license)
 
@@ -49,6 +59,26 @@ function task1() {
 };
 task1.description = 'Test gulp task for creating PNG QR codes';
 GulpClient.task(task1);
+
+```
+
+### Create QRCode in streaming mode with scale
+
+Read .url files in streaming mode
+and create PNG QRCodes with `scale = 10`:
+
+```typescript file=test/examples/02/gulpfile.ts
+import { url2qr } from '#gulp-uri-qrcode';
+import GulpClient from 'gulp';
+
+function task1() {
+  return GulpClient.src('fixtures/*.url', { buffer: false })
+    .pipe(url2qr({ qrOptions: { scale: 10 } }))
+    .pipe(GulpClient.dest('output', { encoding: false }));
+};
+task1.description = 'Test gulp task for creating PNG QR codes';
+GulpClient.task(task1);
+
 ```
 
 ## API
